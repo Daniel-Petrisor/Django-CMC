@@ -1,6 +1,7 @@
 # Import data from CSV to the database using the custom command.
 # -----------------------------------------------------------------
 from django.core.management.base import BaseCommand, CommandError
+from django.db import DataError
 # from dataentry.models import Student
 from django.apps import apps
 import csv
@@ -37,11 +38,20 @@ class Command(BaseCommand):
 
         if not model:   # If the model is not found
             raise CommandError(f'Model "{model_name}" not found in any app!')
-
-        print(f'File path: {file_path}')
+        
+        # compare csv header with model's fields names
+        # get all the fields names of the model that we found
+        model_fields = [field.name for field in model._meta.fields if field.name != 'id']
 
         with open(file_path) as file:
             reader = csv.DictReader(file)
+            csv_header = reader.fieldnames
+
+            # compare csv header with model's field names
+            if csv_header != model_fields:
+                raise DataError(f'CSV header "{csv_header}" does not match model fields "{model_fields}"!')
+
+
             for row in reader:
                 # Student.objects.create(**row)
                 model.objects.create(**row)
